@@ -16,12 +16,12 @@ export DISPLAY=:0;
 if [ $stat -lt 10 ] && [ $charge != 'charging' ]
 then
 	notify-send -u "critical" "Battery Low ! $stat%" "Will hibernate soon.";
-	espeak "Battery $stat %";
+	flite "Battery $stat %";
 elif [ $stat -lt 20 ] && [ $charge != 'charging' ]
 then
 	notify-send -u "normal" "Battery Low!" "Battery remaining $stat%";
-	espeak "Battery $stat %";
-elif [ $stat -gt 100 ] && [ $charge != 'discharging' ]
-then
-	notify-send -u "low" "Battery Full!" "You can unplug the charger to increase battery life";
+	flite "Battery $stat %";
+#elif [ $stat -gt 100 ] && [ $charge != 'discharging' ]
+#then
+	#notify-send -u "low" "Battery Full!" "You can unplug the charger to increase battery life";
 fi
