@@ -79,9 +79,10 @@ elsif($option eq 'list'){
 elsif($option eq 'create'){
 
     unless($ARGV[1]){
+        print "Argument for create should be 'yyyy:m:d:D:h:m'|'title'|'details'\n";
         print "Title is optional\n";
-        print "Date can be set only whatever is required. eg: ::::5: will execute at next 5 AM";
-        die "Argument for create should be 'yyyy:m:d:D:h:m'|'title'|'details'\n";
+        print "Date can be set only whatever is required. eg: ::::5: will execute at next 5 AM\n";
+        die;
     }
 
     push @array, $ARGV[1];
