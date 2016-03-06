@@ -1,0 +1,62 @@
+#! /bin/bash
+
+backup_drive="/media/dinesh/DineshWDE1TB/DD"
+
+if [ -d $backup_drive ]; then
+
+	backup_log_file="$backup_drive/backup.log"
+
+	echo "Starting backup to drive $backup_drive"
+	echo "Backup started on " `date` | tee -a $backup_log_file
+
+
+	# Syncing Office directory with delete option
+	echo "Syncing ~/Office/ with delete..." | tee -a $backup_log_file
+	rsync -rauv --log-file="$backup_drive/rsync_Office.log" --delete-after ~/Office/ $backup_drive/Office/
+
+	# Syncing Music directory with delete option
+	echo "Syncing ~/Music/ with delete..." | tee -a $backup_log_file
+	rsync -rauv --log-file="$backup_drive/rsync_Music.log" --delete-after ~/Music/ $backup_drive/Music/
+
+	# Syncing Videos/Songs directory
+	echo "Syncing ~/Videos/Songs/ ..." | tee -a $backup_log_file
+	rsync -rauv --log-file="$backup_drive/rsync_Videos_Songs.log" ~/Videos/Songs/ $backup_drive/Videos/Songs/
+
+	# Syncing BITS_Materials directory
+	echo "Syncing ~/BITS_Materials/ ..." | tee -a $backup_log_file
+	rsync -rauv --log-file="$backup_drive/rsync_BITS_Materials.log" ~/BITS_Materials/ $backup_drive/BITS_Materials/ 
+
+	# Syncing Linux Distros directory
+	echo "Syncing  ~/Linux\ Distros/ ..." | tee -a $backup_log_file
+	rsync -rauv --log-file="$backup_drive/rsync_Linux_Distros.log" ~/Linux\ Distros/ $backup_drive/Linux\ Distros/
+
+
+	echo "Backup completed on " `date` | tee -a $backup_log_file;
+	echo "" >> $backup_log_file
+	echo "======================================================" >> $backup_log_file
+	echo "" >> $backup_log_file
+
+	sleep 10;
+	udisksctl unmount -b /dev/sdb1
+	udisksctl power-off -b /dev/sdb
+
+else
+
+	echo "Backup directory $backup_drive does not exist!!!"
+	echo "Trying to mount the drive if any added!!!"
+
+	if [ -b /dev/sdb1 ]; then
+		udisksctl mount -b /dev/sdb1
+
+		if [ -d $backup_drive ]; then
+			./sync2wd;
+		else
+			udisksctl unmount -b /dev/sdb1
+			udisksctl power-off -b /dev/sdb
+			echo "Backup directory $backup_drive does not exist!!!"
+		fi
+	else
+		echo "No external device added!!!"
+	fi
+
+fi
