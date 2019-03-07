@@ -1,7 +1,7 @@
 #!/bin/sh
 
 #
-# user_projects_updated.sh
+# user_project_updated.sh
 #
 # Developed by Dinesh Dharmalingam
 #
@@ -13,7 +13,7 @@
 
 # Optional number of days argument
 n_days=${1:-7};
-users=$(cat /etc/passwd | grep '/bin/bash\|/bin/zsh' | cut -f 1 -d ':' | sort | uniq)
+users=$(cat /etc/passwd | cut -f 1 -d ':' | sort | uniq)
 RED='\033[01;31m'
 GREEN='\033[01;32m'
 
@@ -23,7 +23,10 @@ do
 	if [ -e $dir ]
 	then
 		# Find if a directory path contains PAMS got modified file in last n_days
-		modified=$(find $dir -ipath '*PAMS*' -type f -mtime -$n_days -exec stat -c '%U' {} \; -quit)
+		# Check only for perl, css, html, javascript files
+		modified=$(find $dir -path '*PAMS*' \( ! -regex '.*/\..*' \) \
+			\( -name '*.pm' -o -name '*.pl' -o -name '*.js' -o -name '*.tt' -o -name '*.css' -o -name '*.t' -o -name '*.scss' \) \
+			-type f -mtime -$n_days -exec stat -c '%U' {} \; -quit)
 		if [ $modified ]
 		then
 			echo -e "${GREEN}$u Done!"
