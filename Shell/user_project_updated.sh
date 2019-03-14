@@ -25,7 +25,10 @@ do
 		# Find if a directory path contains PAMS got modified file in last n_days
 		# Check only for perl, css, html, javascript files
 		modified=$(find $dir -path '*PAMS*' \( ! -regex '.*/\..*' \) \
-			\( -name '*.pm' -o -name '*.pl' -o -name '*.js' -o -name '*.tt' -o -name '*.css' -o -name '*.t' -o -name '*.scss' \) \
+			\( -name '*.pm' -o -name '*.pl' -o -name '*.js' -o -name '*.tt' \
+			-o -name '*.css' -o -name '*.t' -o -name '*.scss' -o -name '*.xml' \
+			-o -name '*.java' -o -name '*.class' -o -name '*.h' -o -name '*.m' \
+			\) \
 			-type f -mtime -$n_days -exec stat -c '%U' {} \; -quit)
 		if [ $modified ]
 		then
