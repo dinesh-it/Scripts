@@ -96,6 +96,8 @@ sub get_users {
     my $names = {};
     foreach my $member (@{$members}) {
         $names->{$member->{name}} = $member->{id};
+        $names->{real_user_names}->{$member->{profile}->{real_name_normalized}} = $member->{id};
+        $names->{display_names}->{$member->{profile}->{display_name_normalized}} = $member->{id};
     }
 
     print Dumper($names) if($debug);
@@ -112,25 +114,37 @@ sub get_slack_user_id {
         $slack_users = get_users();
     }
 
-    my @users = keys %{$slack_users};
+    # Try an exact match first
+    my $user_id = $slack_users->{$real_user_name} if($slack_users->{$real_user_name});
 
-    my @sel_users = ($real_user_name) if($slack_users->{$real_user_name});
+    # RegEx search on slack usernames
+    $user_id = _get_user_id($real_user_name, $slack_users) if(!defined $user_id);
+    $user_id = _get_user_id($real_user_name, $slack_users->{real_user_names}) if(!defined $user_id);
+    $user_id = _get_user_id($real_user_name, $slack_users->{display_names}) if(!defined $user_id);
 
-    # Do an exact match
-    if(!@sel_users) {
-        @sel_users = grep(/$real_user_name/i, @users);
+    if(defined $user_id and $user_id ne 'MUL') {
+        return $user_id;
     }
 
+    print "No users matching $real_user_name\n";
+    return undef;
+}
+
+sub _get_user_id {
+    my ($u, $us) = @_;
+
+    my @sel_users = grep(/$u/i, keys %{$us});
+
     if(@sel_users == 1) {
-        print "Found slack user id $slack_users->{$sel_users[0]} with username $sel_users[0] for given user $real_user_name\n";
-        return $slack_users->{$sel_users[0]};
+        print "Found slack user id $us->{$sel_users[0]} with username $sel_users[0] for given user $u\n";
+        return $us->{$sel_users[0]};
     }
 
     if(@sel_users > 1) {
-        print "Multiple match found for username $real_user_name - (@sel_users)\n";
-    }else {
-        print "No users matching $real_user_name\n";
+        print "Multiple match found for username $u - (@sel_users)\n";
+        return 'MUL';
     }
+
     return undef;
 }
 
@@ -171,11 +185,11 @@ sub send_message {
         as_user => 1,
         link_names => 1,
         attachments => $attachment,
-        #%{$json_ref},
+        %{$json_ref},
     };
 
     my $json_body = encode_json($body);
-    print "Sending message to slack user id: $su_id\n";
+    print "Sending message to slack user id: $su_id ($user)\n";
     print "Content: $json_body\n" if($debug);
 
     my $post_msg = 'https://slack.com/api/chat.postMessage';
