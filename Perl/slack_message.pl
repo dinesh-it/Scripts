@@ -114,8 +114,10 @@ sub get_slack_user_id {
         $slack_users = get_users();
     }
 
+    my $user_id;
+
     # Try an exact match first
-    my $user_id = $slack_users->{$real_user_name} if($slack_users->{$real_user_name});
+    $user_id = $slack_users->{$real_user_name} if($slack_users->{$real_user_name});
 
     # RegEx search on slack usernames
     $user_id = _get_user_id($real_user_name, $slack_users) if(!defined $user_id);
