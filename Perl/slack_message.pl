@@ -10,6 +10,7 @@
 #
 # Script to send message to slack user in your workspace
 # User needs to generate a OAuth token to use this script
+# The OAuth token should have chat.write and users.read scopes enabled
 
 use strict;
 use warnings;
