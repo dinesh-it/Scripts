@@ -19,7 +19,7 @@ use Data::Dumper;
 use JSON::XS qw/decode_json encode_json/;
 use Getopt::Long;
 
-my ($title, $message, $footer, $json, $color, @users, $help, $debug, $token);
+my ($title, $message, $footer, $json, $color, @users, $help, $debug);
 $color = '#ff4d4d';
 
 GetOptions (
@@ -40,7 +40,7 @@ if($help) {
 sub help {
     print 'Send message to slack as a user
 
-        --message -m    - Text message to be sent
+        --message -m    - Text message to be sent or read from stdin
         --footer -f     - Footer text message in attachment (optional)
         --title -t      - Title for your message in attachment (optional)
         --color -c      - CSS Color code for the attachment (optional, default #ff4d4d(red))
@@ -48,6 +48,8 @@ sub help {
         --user -u       - User name to send this message (multiple values accepted)
         --debug -d      - Print response received from slack on each step
         --help -h       - Prints this help message and exit
+
+    Note: If you are using stdin to type your message, press ctrl+D to send
     ';
     print "\n";
     exit;
@@ -55,6 +57,13 @@ sub help {
 
 if(!$ENV{SLACK_OAUTH_TOKEN}) {
     die "please set OAuth slack user/bot token at env SLACK_OAUTH_TOKEN\n";
+}
+
+if(!$message) {
+    while (<>) {
+        $message .= $_;
+    }
+    chomp $message;
 }
 
 if((!$message and !$json) or !@users) {
@@ -165,29 +174,31 @@ sub send_message {
         $json_ref = decode_json($json);
     }
 
-    my $attachment = [{
-            color => $color,
-            text => $message,
-        }];
+    my $attachment = {
+        'attachments' => [{
+                color => $color,
+                text => $message,
+            }]
+    };
 
     if($title) {
-        $attachment->[0]->{title} = $title;
+        $attachment->{attachments}[0]{title} = $title;
     }
 
     if($footer) {
-        $attachment->[0]->{footer} = $footer;
+        $attachment->{attachments}[0]{footer} = $footer;
     }
 
     if(!$title && !$footer) {
-        $attachment->[0]->{pretext} = $message;
-        delete $attachment->[0]->{text};
+        delete $attachment->{attachments};
+        $attachment->{text} = $message;
     }
 
     my $body = {
         channel => "$su_id",
         as_user => 1,
         link_names => 1,
-        attachments => $attachment,
+        %{$attachment},
         %{$json_ref},
     };
 
