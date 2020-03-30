@@ -19,7 +19,7 @@ use Data::Dumper;
 use JSON::XS qw/decode_json encode_json/;
 use Getopt::Long;
 
-my ($title, $message, $footer, $json, $color, @users, $help, $debug);
+my ($title, $message, $footer, $json, $color, @users, $help, $debug, $code);
 $color = '#ff4d4d';
 
 GetOptions (
@@ -29,6 +29,7 @@ GetOptions (
     "json=s" => \$json,
     "color=s" => \$color,
     "user=s" => \@users,
+    "block" => \$code,
     "debug" => \$debug,
     "help" => \$help,
 );
@@ -42,6 +43,7 @@ sub help {
 
         --message -m    - Text message to be sent or read from stdin
         --footer -f     - Footer text message in attachment (optional)
+        --block -b      - Send message as a code block (optional)
         --title -t      - Title for your message in attachment (optional)
         --color -c      - CSS Color code for the attachment (optional, default #ff4d4d(red))
         --json -j       - your custom json string which will be sent as it is in the Content (optional)
@@ -65,6 +67,8 @@ if(@users && !$message) {
     }
     chomp $message;
 }
+
+$message = "```$message```" if($code);
 
 if((!$message and !$json) or !@users) {
     print "\nRequired params missing, (--message or --json) and --user required\n\n";
@@ -189,7 +193,7 @@ sub send_message {
         $attachment->{attachments}[0]{footer} = $footer;
     }
 
-    if(!$title && !$footer) {
+    if(!$title && !$footer && length($message) < 500) {
         delete $attachment->{attachments};
         $attachment->{text} = $message;
     }
