@@ -59,7 +59,7 @@ if(!$ENV{SLACK_OAUTH_TOKEN}) {
     die "please set OAuth slack user/bot token at env SLACK_OAUTH_TOKEN\n";
 }
 
-if(!$message) {
+if(@users && !$message) {
     while (<>) {
         $message .= $_;
     }
