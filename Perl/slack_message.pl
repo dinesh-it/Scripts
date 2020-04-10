@@ -56,7 +56,7 @@ sub help {
                           You can mention direct usernames/channels with @/# respectively
                           Names without @/# will be matched with user.list available for given token
 
-                            eg: ./slack_message.pl -u user -u @username -u #channelname -m "some message"
+                            eg: ./slack_message.pl -u user -u "@username" -u "#channelname" -m "some message"
 
         --title -t      - Title for your message in attachment (optional)
         --block -b      - Send message as a code block (optional)
