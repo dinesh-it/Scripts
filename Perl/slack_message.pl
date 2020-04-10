@@ -20,6 +20,7 @@ use JSON::XS qw/decode_json encode_json/;
 use Getopt::Long;
 
 my ($title, $message, $footer, $json, $color, @users, $help, $debug, $code);
+my $user_cache_file = '/tmp/slack_users_list.json';
 $color = '#ff4d4d';
 
 GetOptions (
@@ -40,18 +41,30 @@ if($help) {
 
 sub help {
     print 'Send message to slack as a user
+        Set slack OAuth token in the env SLACK_OAUTH_TOKEN
 
         --message -m    - Text message to be sent or read from stdin
-        --footer -f     - Footer text message in attachment (optional)
-        --block -b      - Send message as a code block (optional)
+                          you can use this script with pipe (|) in that case this option can be ignored
+
+                            eg: echo "some text" | ./slack_message.pl -u user_name
+
+                          if this option is ignored and also not piped, 
+                          then script will be waiting for user input in STDIN
+                          hit Ctrl-D once composed the message to be sent
+
+        --user -u       - User name to whom this message to be sent to (multiple values accepted)
+                          You can mention direct usernames/channels with @/# respectively
+                          Names without @/# will be matched with user.list available for given token
+
+                            eg: ./slack_message.pl -u user -u @username -u #channelname -m "some message"
+
         --title -t      - Title for your message in attachment (optional)
+        --block -b      - Send message as a code block (optional)
+        --footer -f     - Footer text message in attachment (optional)
         --color -c      - CSS Color code for the attachment (optional, default #ff4d4d(red))
         --json -j       - your custom json string which will be sent as it is in the Content (optional)
-        --user -u       - User name to send this message (multiple values accepted)
         --debug -d      - Print response received from slack on each step
         --help -h       - Prints this help message and exit
-
-    Note: If you are using stdin to type your message, press ctrl+D to send
     ';
     print "\n";
     exit;
@@ -91,6 +104,21 @@ my $slack_users;
 sub get_users {
     my $users_read = 'https://slack.com/api/users.list';
 
+    # Read from user.list cache
+    if(-f $user_cache_file) {
+        print "Trying to get user.list from cache file $user_cache_file\n" if($debug);
+        open my $fh, "<$user_cache_file" or die "Unable to open cache file $user_cache_file: $!";
+        my $file_content = '';
+        while (<$fh>) {
+            $file_content .= $_;
+        }
+        close $fh;
+        if($file_content) {
+            print "Returning user.list from cache\n" if($debug);
+            return decode_json($file_content);
+        }
+    }
+
     set_ua();
     $ua->default_header('Content-Type' => "application/x-www-form-urlencoded");
 
@@ -114,8 +142,14 @@ sub get_users {
         $names->{display_names}->{$member->{profile}->{display_name_normalized}} = $member->{id};
     }
 
-    print Dumper($names) if($debug);
-    $slack_users = $names;
+    $names->{_cache_create_epoch} = time;
+
+    print "Trying to write user.list to cache file $user_cache_file\n" if($debug);
+    open my $fh, ">$user_cache_file" or die "Unable to open cache file $user_cache_file: $!";
+    print $fh encode_json($names);
+    close $fh;
+    print "$user_cache_file created\n" if($debug);
+
     return $names;
 }
 
@@ -124,8 +158,13 @@ sub get_slack_user_id {
 
     $real_user_name = lc($real_user_name);
 
+    ReTryUsers:
     if(!$slack_users) {
         $slack_users = get_users();
+        if($debug) {
+            print "Users list\n";
+            print Dumper($slack_users);
+        }
     }
 
     my $user_id;
@@ -140,6 +179,13 @@ sub get_slack_user_id {
 
     if(defined $user_id and $user_id ne 'MUL') {
         return $user_id;
+    }
+
+    # Refresh the cache if name not found and also cache is older than 24 hours
+    if($slack_users and $slack_users->{_cache_create_epoch} < (time - 86400)) {
+        unlink $user_cache_file;
+        undef $slack_users;
+        goto ReTryUsers;
     }
 
     print "No users matching $real_user_name\n";
@@ -167,7 +213,13 @@ sub _get_user_id {
 sub send_message {
     my ($user) = @_;
 
-    my $su_id = get_slack_user_id($user);
+    my $su_id;
+    if($user =~ /^(#|@)/) {
+        $su_id = $user;
+    }
+    else {
+        $su_id = get_slack_user_id($user);
+    }
 
     if(!$su_id) {
         return;
@@ -193,7 +245,9 @@ sub send_message {
         $attachment->{attachments}[0]{footer} = $footer;
     }
 
-    if(!$title && !$footer && length($message) < 500) {
+    my $linenum = $message =~ tr/\n//;
+
+    if(!$title && !$footer && ($linenum < 50 || length($message) < 900)) {
         delete $attachment->{attachments};
         $attachment->{text} = $message;
     }
