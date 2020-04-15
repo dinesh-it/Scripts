@@ -42,6 +42,7 @@ if($help) {
 sub help {
     print 'Send message to slack as a user
         Set slack OAuth token in the env SLACK_OAUTH_TOKEN
+        token should have chat.write and users.read scopes enabled
 
         --message -m    - Text message to be sent or read from stdin
                           you can use this script with pipe (|) in that case this option can be ignored
